@@ -14,5 +14,5 @@ projects[drupal][version] = 7.38
 
 projects[es][type] = profile
 projects[es][download][type] = git
-projects[es][download][url] = https://github.com/collabforge/esprofile.git
+projects[es][download][url] = https://github.com/Collabforge/esprofile.git
 projects[es][download][branch] = master
