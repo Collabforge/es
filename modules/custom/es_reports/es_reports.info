@@ -1,0 +1,3 @@
+name = Enabling Spaces Reporting Module
+description = Enables a range of reporting functionality required for Enabling Spaces
+core = 7.x

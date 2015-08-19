@@ -1,0 +1,14 @@
+# Ensure only custom code is contributed.
+
+libraries/*
+modules/*
+!modules/custom
+tests/behat/vendor
+themes/*
+!themes/custom
+
+
+
+# Prevent miscellaneous/system files.
+
+.DS_Store

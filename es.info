@@ -1,0 +1,38 @@
+name = Enabling Spaces
+description = Installation profile for Enabling Spaces
+core = 7.x
+
+
+
+; Dependencies
+
+dependencies[] = es_core
+dependencies[] = es_forms
+dependencies[] = es_reports
+
+
+
+; Files - Simpletest
+
+; No Simpletests defined and/or needed yet.
+; files[] = tests/es.test
+
+
+
+; Profiler - Nodes
+
+; nodes[sample][uid] = 1
+; nodes[sample][title] = Sample
+; nodes[sample][type] = blog_feed
+; nodes[sample][feeds][FeedsHTTPFetcher][source] = http://example.com
+; nodes[sample][language] = und
+
+
+
+
+
+; Profiler - Variables
+
+variables[site_mail] = webmaster@collabcoapp.com
+variables[site_name] = Enabling Spaces
+

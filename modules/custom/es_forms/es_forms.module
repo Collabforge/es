@@ -1,0 +1,247 @@
+<?php
+
+/**
+ * @file
+ * Enables a range of form alterations required for Enabling Spaces
+ *
+ */
+
+/**
+ * Implements hook_admin_paths().
+ */
+function es_forms_admin_paths() {
+  // Override default webform theming to default not admin
+    return array(
+      'node/*/webform' => FALSE,
+      'node/*/webform/*' => FALSE,
+      'node/*/webform-results' => FALSE,
+      'node/*/webform-results/*' => FALSE,
+      'node/*/submission/*' => FALSE,
+      'admin/content/webform' => FALSE,
+      'node/add/webform' => FALSE,
+      'node/*/webform-results/analysis' => FALSE,
+    );
+}
+
+/**
+  * Implements hook_form_FORM_ID_alter().
+  */
+function es_forms_form_webform_node_form_alter(&$form, &$form_state) {
+
+  // NO LONGER NEEDED: USING DRUPAL ENTITY REFERENCE
+  // $ccm_options = _get_ccm_orgs();
+  // // org that survey belongs to
+  // $form['ccm_org'] = array(
+  //   '#type' => 'select',
+  //   '#title' => 'CCM Organisation',
+  //   '#options' => $ccm_options,
+  //   '#description' => t('Select the organisation that runs this survey.'),
+  // );
+  // do you want to allow it to be defined by region
+
+  // do you want to allow it to be defined by whether it is student or grouped responses
+
+  // do you want to allow it to be defined by school
+}
+
+// NO LONGER NEEDED: USING ENTITY REFERENCE
+// function _get_ccm_orgs() {
+//    $nodes = array();
+//   $select = db_select('node', 'n')
+//   ->fields('n',array('nid','title'))
+//   ->condition('type', 'ccm_organisation', '=')
+//   ->orderBy('title', 'ASC')//ORDER BY created
+//   ->execute()
+//   ->fetchAll();
+//   foreach($select as $key=>$value) {
+//     $ccm_org_options[$value->nid] = t($value->title);
+//   }
+//   return $ccm_org_options;
+// }
+
+/**
+ * Implements hook_FORM_ID_submit()
+ */
+// function es_forms_webform_node_form_submit(&$form, $form_state) {
+//   print "<pre>";
+//   print_r($form);
+//   die();
+// }
+
+/**
+  * Implements hook_form_FORM_ID_alter().
+  */
+function es_forms_form_webform_component_edit_form_alter(&$form, &$form_state, $form_id) {
+  array_unshift($form['#submit'], 'es_forms_webform_component_edit_submit');
+  //drupal_add_js("/sites/default/modules/es_forms/jquery-ui.min.js");
+  //drupal_add_css("/sites/default/modules/es_forms/jquery-ui.css");
+  //drupal_add_js("/sites/default/modules/es_forms/es_forms.js");
+
+
+
+  $ccm_result = db_select('webform_ccm', 'w')
+  ->fields('w')
+  ->condition('nid', $form['nid']['#value'], '=')
+  ->condition('cid', $form['cid']['#value'], '=')
+  ->execute()
+  ->fetchAssoc();
+
+  $ccm_result['ccm_mid'] = unserialize($ccm_result['ccm_mid']);
+  $form['vtabs'] = array(
+    '#type' => 'vertical_tabs',
+  );
+  $form['ccmweight'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('CCM Weighting'),
+    '#description' => t('These must add up to 100 (percent) in total. <br><br> If you want to remove CCM weightings, leave all CCM fields blank.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 1,
+    '#group' => 'vtabs'
+  );
+
+  $form['ccmweight']['connection'] = array(
+    '#type' => 'textfield',
+    '#default_value' => isset($ccm_result['ccm_connection']) ? $ccm_result['ccm_connection'] : '',
+    '#title' => t('Connection Weighting'),
+    '#description' => t('Enter a number between 0 and 100, representing a percentage.'),
+    '#required' => FALSE,
+    '#weight' => 1,
+    '#maxlength' => NULL,
+  );
+  $form['ccmweight']['connection_mid'] = array(
+    '#type' => 'checkboxes',
+    '#default_value' => isset($ccm_result['ccm_mid']['connection']) ? $ccm_result['ccm_mid']['connection'] : array(),
+    '#title' => t('Connection Mid-Level Concepts'),
+    '#description' => t('Tick all that apply, or none.'),
+    '#options' => drupal_map_assoc(array(t('Relate'), t('Communicate'), t('Trust'))),
+    '#required' => FALSE,
+    '#weight' => 2,
+  );
+
+  $form['ccmweight']['capacity'] = array(
+    '#type' => 'textfield',
+    '#default_value' => isset($ccm_result['ccm_capacity']) ? $ccm_result['ccm_capacity'] : '',
+    '#title' => t('control Weighting'),
+    '#description' => t('Enter a number between 0 and 100, representing a percentage.'),
+    '#required' => FALSE,
+    '#weight' => 3,
+    '#maxlength' => NULL,
+  );
+  $form['ccmweight']['capacity_mid'] = array(
+    '#type' => 'checkboxes',
+    '#default_value' => isset($ccm_result['ccm_mid']['capacity']) ? $ccm_result['ccm_mid']['capacity'] : array(),
+    '#title' => t('control Mid-level Concepts'),
+    '#description' => t('Tick all that apply, or none.'),
+    '#options' => drupal_map_assoc(array(t('Skills'), t('Learning experiences'), t('Confidence'))),
+    '#required' => FALSE,
+    '#weight' => 4,
+  );
+
+  $form['ccmweight']['meaning'] = array(
+    '#type' => 'textfield',
+    '#default_value' => isset($ccm_result['ccm_meaning']) ? $ccm_result['ccm_meaning'] : '',
+    '#title' => t('Meaning Weighting'),
+    '#description' => t('Enter a number between 0 and 100, representing a percentage.'),
+    '#required' => FALSE,
+    '#weight' => 5,
+    '#maxlength' => NULL,
+  );
+  $form['ccmweight']['meaning_mid'] = array(
+    '#type' => 'checkboxes',
+    '#default_value' => isset($ccm_result['ccm_mid']['meaning']) ? $ccm_result['ccm_mid']['meaning'] : array(),
+    '#title' => t('Meaning Mid-Level Concepts'),
+    '#description' => t('Tick all that apply, or none.'),
+    '#options' => drupal_map_assoc(array(t('Sense of purpose'), t('Relevance'), t('Value'))),
+    '#required' => FALSE,
+    '#weight' => 6,
+  );
+
+  // Changing default webform settings
+  $form['display']['#collapsed'] = TRUE;
+  $form['display']['#group'] = 'vtabs';
+  $form['validation']['#collapsed'] = TRUE;
+  $form['validation']['#group'] = 'vtabs';
+  $form['items']['#collapsed'] = TRUE;
+  $form['items']['#group'] = 'vtabs';
+  $form['position']['#collapsed'] = TRUE;
+  $form['position']['#group'] = 'vtabs';
+  $form['items']['options']['#title'] = "IMPORTANT: Enter in order of MOST weighting to CCM concepts first, to least weighting last.";
+  $form['#validate'][] = 'es_forms_webform_component_edit_validation';
+  return $form;
+}
+
+function es_forms_webform_component_edit_validation(&$form, $form_state) {
+  if (($form['ccmweight']['connection']['#value'] == "") && ($form['ccmweight']['capacity']['#value'] == "") && ($form['ccmweight']['meaning']['#value'] == "")) {
+    return;
+  }
+  // Checks if the CCM value is a number
+  if ((!is_numeric($form['ccmweight']['connection']['#value'])) || (!is_numeric($form['ccmweight']['capacity']['#value'])) || (!is_numeric($form['ccmweight']['meaning']['#value']))) {
+    form_set_error('ccmweight', t('The CCM Weighting can only accept a numeric character.'));
+  }
+  // Checks if the CCM value adds up to 100
+  $ccmweight_100 = $form['ccmweight']['connection']['#value'] + $form['ccmweight']['capacity']['#value'] + $form['ccmweight']['meaning']['#value'];
+  if ($ccmweight_100 != 100) {
+    $overunder = 100 - $ccmweight_100;
+    form_set_error('ccmweight', t('The CCM Weightings do not add up to 100 percent - need to add/remove '.$overunder.' percentage points.'));
+  }
+}
+
+function es_forms_webform_component_edit_submit(&$form, $form_state) {
+
+  // Batch up and serialize the mid-level CCM checkboxes
+  $ccm_mid['connection'] = array($form['ccmweight']['connection_mid']['Relate']['#default_value'],$form['ccmweight']['connection_mid']['Communicate']['#default_value'],$form['ccmweight']['connection_mid']['Trust']['#default_value']);
+  $ccm_mid['capacity'] = array($form['ccmweight']['capacity_mid']['Skills']['#default_value'], $form['ccmweight']['capacity_mid']['Learning experiences']['#default_value'],$form['ccmweight']['capacity_mid']['Confidence']['#default_value']);
+  $ccm_mid['meaning'] = array($form['ccmweight']['meaning_mid']['Sense of purpose']['#default_value'],$form['ccmweight']['meaning_mid']['Relevance']['#default_value'],$form['ccmweight']['meaning_mid']['Value']['#default_value']);
+
+  $ccm_mid_serialize = serialize($ccm_mid);
+
+  // New components don't have a CID. This gets the last component number, if
+  // one exists, and adds +1, otherwise sets the CID to 1.
+  if (!isset($form['cid']['#value'])) {
+      $cid_result = db_select('webform_ccm', 'w')
+    ->fields('w')
+    ->condition('nid', $form['nid']['#value'], '=')
+    ->orderBy('cid', 'DESC')
+    ->execute()
+    ->fetchAssoc();
+    if((!isset($cid_result)) || ($cid_result == NULL) || ($cid_result == "")) {
+      $form['cid']['#value'] = 1;
+    } else {
+      $form['cid']['#value'] = $cid_result['cid']+1;
+    }
+  }
+
+  // Now that we definitely have a CID and NID, we check for an existing entry.
+  // If none exists, insert a new line, otherwise, update.
+  $result = db_select('webform_ccm', 'w')
+    ->fields('w')
+    ->condition('nid', $form['nid']['#value'], '=')
+    ->condition('cid', $form['cid']['#value'], '=')
+    ->execute()
+    ->fetchAssoc();
+  if((!isset($result)) || ($result == NULL) || ($result == "")) {
+    db_insert('webform_ccm')
+      ->fields(array(
+      "nid" => $form['nid']['#value'],
+      "cid" => $form['cid']['#value'],
+      "ccm_connection" => $form['ccmweight']['connection']['#value'],
+      "ccm_capacity" => $form['ccmweight']['capacity']['#value'],
+      "ccm_meaning" => $form['ccmweight']['meaning']['#value'],
+      "ccm_mid" => $ccm_mid_serialize,
+      ))
+      ->execute();
+  }
+  else {
+    db_update('webform_ccm')
+      ->fields(array(
+         "ccm_connection" => $form['ccmweight']['connection']['#value'],
+         "ccm_capacity" => $form['ccmweight']['capacity']['#value'],
+         "ccm_meaning" => $form['ccmweight']['meaning']['#value'],
+         "ccm_mid" => $ccm_mid_serialize,
+      ))
+    ->condition('nid', $form['nid']['#value'], '=')
+    ->condition('cid', $form['cid']['#value'], '=')
+      ->execute();
+  }
+}

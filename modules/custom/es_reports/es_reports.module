@@ -1,0 +1,294 @@
+<?php
+
+/**
+ * @file
+ * Enables a range of reporting functionality required for Enabling Spaces
+ *
+ */
+
+/**
+ * Implements hook_block_info().
+ */
+// function es_reports_block_info() {
+//   $blocks = array();
+//   $blocks['my_block'] = array(
+//     'info' => t('My Custom Block'),
+//   );
+
+//   return $blocks;
+// }
+
+// function es_reports_block_view($delta = '') {
+//   switch ($delta) {
+//     case 'my_block':
+//       $block['subject'] = 'Hello World';
+//       $block['content'] = _YOUR_MODULE_BLOCK_ABC_CONTENT();
+//       break;
+//   }
+//   return $block;
+// }
+
+// function _YOUR_MODULE_BLOCK_ABC_CONTENT() {
+//   $output = t('Hello world');
+//   return $output;
+// }
+
+/**
+ * Implements hook_menu().
+ */
+function es_reports_menu() {
+  $items['reports/average'] = array(
+    'title' => 'Average Survey Responses',
+    'page callback' => 'average_survey_responses',
+    'access arguments' => array('access content'),
+  );
+  $items['reports/average_ccm'] = array(
+    'title' => 'CCM Weighting based on Average Survey Responses',
+    'page callback' => 'average_ccm_survey_responses',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+function average_responses($survey_id) {
+  global $survey;
+  $survey = node_load($survey_id);
+
+  $submitted = db_select('webform_submitted_data', 'wsd')
+  ->fields('wsd')
+  ->condition('nid', $survey_id, '=')
+  ->condition('data', '', '!=')
+  ->execute()
+  ->fetchAll();
+
+  // Get a list of component types and apply that to $submitted
+  $ccm_field_types = db_select('webform_component', 'wc')
+  ->fields('wc')
+  ->condition('nid', $survey_id, '=')
+  ->execute()
+  ->fetchAll();
+
+  $invalid_components = array();
+  foreach($ccm_field_types as $key=>$value) {
+    if($value->type != "select") {
+      $invalid_components[] = $value->cid;
+    }
+  }
+
+  // Unset irrelevant CCM weightings and non-select/radio/checkbox questions
+  foreach($submitted as $key=>$value) {
+    if(in_array($submitted[$key]->cid, $invalid_components)) {
+      unset($submitted[$key]);
+    }
+  }
+
+  // sanity check before performing operations
+  if (empty($submitted)) {
+    drupal_set_message(t('Notice: No valid survey results for <b>'.$survey->title.'</b>. This may be due to unquantifiable survey questions, or simply no survey data.'));
+    drupal_goto('reports');
+  }
+
+  // gets # of unique SIDs, or simply, number of responses
+  foreach ($submitted as $key=>$value) {
+    $sid_count[$key] = $value->sid;
+  }
+  $number_responses = count(array_unique($sid_count));
+
+  $cid_sum = array();
+  // sum up the responses
+  foreach($submitted as $key=>$value) {
+    if(is_numeric($value->data)) {
+      if(!isset($cid_sum[$value->cid])) {$cid_sum[$value->cid] = '';}
+      $cid_sum[$value->cid] += $value->data;
+    }
+  }
+
+  //spit out a rounded average. var to use here is $cid_average[cid] (array)
+  foreach($cid_sum as $key=>$value) {
+      $cid_average[$key] = round($value / $number_responses);
+      $roundval = $value / $number_responses;
+      $cid_round_dec[$key] = round($roundval, 2);
+  }
+
+  // Builds a data array, $survey_qa, with questions and answers
+  foreach($survey->webform['components'] as $key=>$value) {
+
+    if(isset($value['extra']['items'])) {
+        $e_items = $value['extra']['items'];
+      $ans = explode("\n", $e_items);
+
+      // Loop through and build the items
+      foreach($ans as $keyx=>$valuex) {
+        $newkey = substr($valuex, 0, 1);
+        $options[$newkey] = $ans[$keyx];
+        unset($ans[$keyx]);
+        $options[$newkey] = substr($valuex, 2);
+        foreach($options as $keyy=>$valuey) {
+          if($valuey != "") {
+            $survey_qa[$value['cid']]['answers'][$keyy] = $valuey;
+          }
+        }
+      }
+      // Now the items are built, count how many there are
+      $survey_qa[$value['cid']]['answercount'] = count($survey_qa[$value['cid']]['answers']);
+    } else {
+      // No answers?
+      $survey_qa[$value['cid']]['answers'][$key] = "No associated answers.";
+      $survey_qa[$value['cid']]['answercount'] = 0;
+    }
+    $survey_qa[$value['cid']]['question'] = $value['name'];
+    $survey_qa[$value['cid']]['cid'] = $value['cid'];
+  }
+
+  global $survey_results_raw;
+  $survey_results_raw = array();
+  // Build the data array
+
+
+  // cleans up no-answer survey_qa
+  //   foreach ($survey_qa as $key=>$value) {
+  //   if($survey_qa[$key]['answercount'] == 0) {
+  //     unset($survey_qa[$key]);
+  //   }
+  // }
+
+  foreach ($cid_average as $key=>$value) {
+    //if($survey_qa)
+    $survey_results_raw[$key]['cid'] = $survey_qa[$key]['cid'];
+    $survey_results_raw[$key]['question'] = $survey_qa[$key]['question'];
+    $survey_results_raw[$key]['answer'] = $survey_qa[$key]['answers'][$value];
+    $survey_results_raw[$key]['decimal'] = $cid_round_dec[$key];
+    $survey_results_raw[$key]['answercount'] = $survey_qa[$key]['answercount'];
+  }
+
+  $survey_results_markup = "";
+  foreach($survey_results_raw as $key=>$value) {
+    $survey_results_markup .= "<b>Question:</b> ".$value['question']."<br>";
+    $survey_results_markup .= "<b>Average answer:</b> ".$value['answer']."<br>";
+    $survey_results_markup .= "<b>Raw Average Value:</b> ".$value['decimal']."<br><br>";
+  }
+  return array('survey_results_markup'=>$survey_results_markup, 'survey_results_raw'=>$survey_results_raw);
+}
+
+/**
+ * Custom callback function.
+ */
+function average_survey_responses() {
+  $survey_id = arg(2);
+  $survey_results_data = average_responses($survey_id);
+  $survey_results_markup = $survey_results_data['survey_results_markup'];
+  //$survey_results_raw = $survey_results_data['survey_results_raw'];
+
+  $content['raw_markup'] = array(
+    '#type' => 'markup',
+    '#markup' => $survey_results_markup,
+  );
+
+  return $content;
+}
+
+
+/**
+ * Custom callback function.
+ */
+function average_ccm_survey_responses() {
+  global $survey;
+  $survey_id = arg(2);
+  $survey_results_data = average_responses($survey_id);
+  //$survey_results_markup = $survey_results_data['survey_results_markup'];
+  $survey_results_raw = $survey_results_data['survey_results_raw'];
+
+  $ccm_fields = db_select('webform_ccm', 'wccm')
+  ->fields('wccm')
+  ->condition('nid', $survey_id, '=')
+  ->execute()
+  ->fetchAll();
+
+  if (empty($ccm_fields)) {
+    drupal_set_message(t('Notice: No CCM weightings applied to <b>'.$survey->title.'</b>, so average CCM results are unavailable.'));
+    drupal_goto('reports');
+  }
+
+  // Get a list of component types and apply that to $ccm_fields
+  $ccm_field_types = db_select('webform_component', 'wc')
+  ->fields('wc')
+  ->condition('nid', $survey_id, '=')
+  ->execute()
+  ->fetchAll();
+
+  $invalid_components = array();
+  foreach($ccm_field_types as $key=>$value) {
+    if($value->type != "select") {
+      $invalid_components[] = $value->cid;
+    }
+  }
+//   print "<pre>";
+// print_r($ccm_fields);
+// die();
+  // Unset irrelevant CCM weightings and non-select/radio/checkbox questions
+  foreach($ccm_fields as $key=>$value) {
+    // Unset CCM weightings
+    $ccm_fields_count = 3;
+    if(($value->ccm_connection == "0") || ($value->ccm_connection == NULL)) {
+      unset($ccm_fields[$key]->ccm_connection);
+      $ccm_fields_count--;
+    } else {$ccm_fields[$key]->ccm[] = "Connection";}
+    if(($value->ccm_capacity == "0") || ($value->ccm_capacity == NULL)) {
+      unset($ccm_fields[$key]->ccm_capacity);
+      $ccm_fields_count--;
+    } else {$ccm_fields[$key]->ccm[] = "Capacity";}
+    if(($value->ccm_meaning == "0") || ($value->ccm_meaning == NULL)) {
+      unset($ccm_fields[$key]->ccm_meaning);
+      $ccm_fields_count--;
+    } else {$ccm_fields[$key]->ccm[] = "Meaning";}
+    $ccm_fields[$key]->ccm_fields = $ccm_fields_count;
+    // Unset non-select/radio/checkbox questions
+    if(in_array($ccm_fields[$key]->cid, $invalid_components)) {
+      unset($ccm_fields[$key]);
+    }
+  }
+
+  // Weighting percentage calculation function
+  function convert_average_ccm($decimal, $answercount) {
+    // Converts a scale of 1 to 5 or 1 to 3 into a percentage, where 1 = 100%
+    $flip_decimal = $answercount - $decimal;
+    $percent_decimal = $flip_decimal * (100/($answercount - 1));
+
+    // build in CCM weighting later, in event of multiple CCMs
+    // if ccm_fields_count is 2 then do this, if 3 then do this
+    return $percent_decimal;
+  }
+  // Decode CCM mid
+
+
+  // Build the data object
+  foreach($ccm_fields as $key=>$value) {
+    if($ccm_fields[$key]->cid == $survey_results_raw[$ccm_fields[$key]->cid]['cid']) {
+      $ccm_average_raw = $survey_results_raw[$value->cid]['decimal'];
+      $answercount = $survey_results_raw[$value->cid]['answercount'];
+      if(isset($value->ccm_connection)) {$survey_results_raw[$value->cid]['ccm_connection'] = $value->ccm_connection;}
+      if(isset($value->ccm_capacity)) {$survey_results_raw[$value->cid]['ccm_capacity'] = $value->ccm_capacity;}
+      if(isset($value->ccm_meaning)) {$survey_results_raw[$value->cid]['ccm_meaning'] = $value->ccm_meaning;}
+      $survey_results_raw[$value->cid]['ccm_percentage'] = convert_average_ccm($ccm_average_raw, $answercount);
+      $survey_results_raw[$value->cid]['ccm'] = $ccm_fields[$key]->ccm;
+    }
+  }
+
+  // Format the results
+  $survey_results_markup = "";
+  foreach($survey_results_raw as $key=>$value) {
+    if((isset($value['question'])) && (isset($value['answer'])) && (isset($value['decimal']))) {
+      $survey_results_markup .= "<b>Question ".$key.":</b> ".$value['question']."<br>";
+      $survey_results_markup .= "<b>Average answer:</b> ".$value['answer']."<br>";
+      $survey_results_markup .= "<b>CCM Weighting on ".join(', ', $value['ccm']).":</b> ".$value['ccm_percentage']."%<br><br>";
+    }
+  }
+
+    $content['raw_markup'] = array(
+    '#type' => 'markup',
+    '#markup' => $survey_results_markup,
+  );
+
+  return $content;
+}

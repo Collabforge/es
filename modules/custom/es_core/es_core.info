@@ -1,0 +1,3 @@
+name = Enabling Spaces Core Module
+description = Enables a range of functionality required for Enabling Spaces
+core = 7.x
