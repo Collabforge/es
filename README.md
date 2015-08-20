@@ -12,4 +12,4 @@ community website.
 [Drush (DRUpal SHell)](https://github.com/drush-ops/drush) is required to build
 a usable codebase from this repository with the following command:
 
-`drush make https://raw.githubusercontent.com/collabforge/esprofile/master/stub.make esprofile-7.x`
+`drush make https://raw.githubusercontent.com/collabforge/es/master/stub.make esprofile-7.x`
