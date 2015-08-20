@@ -11,7 +11,7 @@ projects[drupal][version] = 7.38
 
 ; Install profile
 
-projects[es][type] = profile
-projects[es][download][type] = git
-projects[es][download][url] = git@github.com:Collabforge/esprofile.git
-projects[es][download][branch] = master
+projects[esprofile][type] = profile
+projects[esprofile][download][type] = git
+projects[esprofile][download][url] = git@github.com:Collabforge/esprofile.git
+projects[esprofile][download][branch] = master
