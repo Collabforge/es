@@ -112,11 +112,11 @@ projects[webform][version] = "4.10"
 ;libraries[phpsass][download][url] = https://github.com/Decipher/phpsass.git
 ;libraries[phpsass][download][revision] = eee7cdb
 
-libraries[profiler][download][type] = git
-libraries[profiler][download][url] = http://git.drupal.org/project/profiler.git
-libraries[profiler][download][revision] = 6655a1b
+libraries[profiler][download][type] = get
+libraries[profiler][download][url] = http://ftp.drupal.org/files/projects/profiler-7.x-2.0-beta2.zip
+;libraries[profiler][download][revision] = 6655a1b
 ; Added support for Devel generate - https://drupal.org/node/1420344#comment-5890366
-libraries[profiler][patch][] = https://drupal.org/files/devel_generate-1420344-8.patch
+;libraries[profiler][patch][] = https://drupal.org/files/devel_generate-1420344-8.patch
 
 ;libraries[underscore][download][type] = get
 ;libraries[underscore][download][url] = https://github.com/jashkenas/underscore/archive/1.6.0.zip
